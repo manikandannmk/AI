@@ -22,6 +22,37 @@ python app.py
 ### 3. Open in Browser
 Navigate to: `http://localhost:5000`
 
+## ✨ Latest Features (Updated)
+
+### 📤 Enhanced File Upload
+- **Functional File Upload**: Files now properly upload to the server
+- **Real-time Progress Bar**: Shows upload progress from 0-100%
+- **Drag & Drop Support**: Drag PDFs directly into the upload zone
+- **Batch Upload**: Upload multiple PDF files at once
+
+### ⏳ Background Processing with Loader
+- **Animated Loader Spinner**: Shows while embeddings are being generated
+- **Real-time Statistics**: Displays live processing counts
+  - Files being processed
+  - Files completed
+  - Elapsed processing time
+- **Auto-completion Detection**: Automatically hides loader when done
+
+### 🔗 Smart Status Polling
+- **Live Updates**: Polls server every 1 second for processing status
+- **Database Tracking**: Monitors PDF document processing states:
+  - `pending` - Awaiting processing
+  - `processing` - Currently generating embeddings
+  - `completed` - Embeddings created and indexed
+  - `failed` - Error during processing
+
+### 📊 Processing Summary
+- **Final Results Display**: Shows completion summary with:
+  - Total files completed
+  - Number of failed files
+  - Error details for failed files
+  - Total processing time
+
 ## 📋 File Structure
 
 ### Templates
@@ -29,6 +60,7 @@ Navigate to: `http://localhost:5000`
   - Modern, responsive design
   - Drag-and-drop support
   - Real-time file validation
+  - **NEW**: Loader section with spinner animation
   - Progress tracking
 
 ### Static Files
@@ -36,12 +68,16 @@ Navigate to: `http://localhost:5000`
   - Gradient background
   - Smooth animations
   - Responsive layout
-  - Dark mode ready
+  - **NEW**: Spinner animation keyframes
+  - **NEW**: Processing stats panel styling
 
 - **`static/js/upload.js`** - Client-side JavaScript
   - File upload handling
   - Drag-and-drop functionality
   - Form validation
+  - **NEW**: `pollUploadStatus()` - Polls server for status updates
+  - **NEW**: `showProcessingResults()` - Shows final summary
+  - **NEW**: `formatTime()` - Formats elapsed time
   - Progress updates
   - Result rendering
 
@@ -210,12 +246,56 @@ server {
 ## 📊 API Reference
 
 ### POST /api/upload
-Upload PDF files
+Upload PDF files for processing
 ```json
+Request:
 {
   "files": [file1, file2, ...]
 }
+
+Response:
+{
+  "success": true,
+  "uploaded": [
+    {
+      "name": "document.pdf",
+      "path": "/uploads/document.pdf",
+      "size": 1024000,
+      "status": "uploaded - processing embeddings"
+    }
+  ],
+  "errors": [],
+  "message": "Successfully uploaded 1 of 1 files. Processing embeddings in background."
+}
 ```
+
+### GET /api/upload-status ⭐ NEW
+Get real-time status of file processing
+```json
+Response:
+{
+  "pending": 2,
+  "processing": 1,
+  "completed": 5,
+  "failed": 0,
+  "total": 8,
+  "still_processing": true,
+  "processing_files": [
+    {
+      "name": "document1.pdf",
+      "status": "processing",
+      "uploaded_at": "2026-02-25T10:30:00"
+    }
+  ],
+  "failed_files": []
+}
+```
+
+**Status States:**
+- `pending` - File queued for processing
+- `processing` - Currently generating embeddings
+- `completed` - Embeddings created and indexed
+- `failed` - Error occurred during processing
 
 ### POST /api/process
 Process uploaded files
