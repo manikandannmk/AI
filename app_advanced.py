@@ -15,6 +15,7 @@ from pdf_processor import PDFReader, PDFWriter
 from pdf_processor.utils import merge_pdfs, split_pdf, rotate_pdf, get_pdf_info
 from pdf_processor.database import db, PDFDocument, TextChunk, Embedding, SearchQuery, init_db
 from pdf_processor.embeddings import PDFEmbeddingProcessor
+from pdf_processor.response_validator import validate_all_responses, validate_response
 import numpy as np
 
 # Configuration
@@ -111,6 +112,7 @@ def search():
 
 
 @app.route('/api/upload', methods=['POST'])
+@validate_response('upload')
 def upload_files():
     """Handle file uploads and start embedding processing"""
     try:
@@ -167,6 +169,7 @@ def upload_files():
 
 
 @app.route('/api/process', methods=['POST'])
+@validate_response('process')
 def process_files():
     """Process uploaded PDF files"""
     try:
@@ -242,6 +245,7 @@ def process_files():
 
 
 @app.route('/api/merge', methods=['POST'])
+@validate_response('merge')
 def merge():
     """Merge multiple PDFs"""
     try:
@@ -273,6 +277,7 @@ def merge():
 
 
 @app.route('/api/split', methods=['POST'])
+@validate_response('split')
 def split():
     """Split a PDF"""
     try:
@@ -301,6 +306,7 @@ def split():
 
 
 @app.route('/api/rotate', methods=['POST'])
+@validate_response('rotate')
 def rotate():
     """Rotate PDF pages"""
     try:
@@ -332,6 +338,7 @@ def rotate():
 
 
 @app.route('/api/info', methods=['POST'])
+@validate_response('info')
 def info():
     """Get PDF information"""
     try:
@@ -372,12 +379,14 @@ def download(filepath):
 
 
 @app.route('/api/health', methods=['GET'])
+@validate_response('health')
 def health():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
 
 @app.route('/api/documents', methods=['GET'])
+@validate_response('documents')
 def get_documents():
     """Get all uploaded documents with their embedding status"""
     try:
@@ -393,6 +402,7 @@ def get_documents():
 
 
 @app.route('/api/documents/<int:doc_id>', methods=['GET'])
+@validate_response('document')
 def get_document(doc_id):
     """Get specific document details"""
     try:
@@ -411,6 +421,7 @@ def get_document(doc_id):
 
 
 @app.route('/api/search', methods=['POST'])
+@validate_response('search')
 def search_embeddings():
     """Search for similar chunks using semantic similarity"""
     try:
@@ -460,6 +471,7 @@ def search_embeddings():
 
 
 @app.route('/api/chunks/<int:doc_id>', methods=['GET'])
+@validate_response('chunks')
 def get_chunks(doc_id):
     """Get all chunks for a document"""
     try:
@@ -490,6 +502,7 @@ def get_chunks(doc_id):
 
 
 @app.route('/api/embeddings/stats', methods=['GET'])
+@validate_response('stats')
 def get_embedding_stats():
     """Get embedding statistics"""
     try:
@@ -521,6 +534,7 @@ def get_embedding_stats():
 
 
 @app.route('/api/chunk/<int:chunk_id>', methods=['GET'])
+@validate_response('chunk')
 def get_chunk(chunk_id):
     """Get specific chunk details with embeddings"""
     try:
