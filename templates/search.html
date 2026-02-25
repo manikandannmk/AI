@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semantic Search - PDF Processor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-buttons button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-buttons button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .search-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .search-inputs {
+            display: grid;
+            grid-template-columns: 1fr 200px auto;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-inputs input, .search-inputs select {
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-inputs input:focus, .search-inputs select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-btn:active {
+            transform: translateY(0);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .results-section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .results-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #667eea;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(102, 126, 234, 0.2);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-item {
+            border: 1px solid #e0e0e0;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .result-item:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .result-item .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .result-item .result-document {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .result-item .result-score {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .result-item .result-page {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .result-item .result-text {
+            color: #333;
+            line-height: 1.6;
+            font-size: 14px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-left: 3px solid #667eea;
+            margin: 10px 0;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #fcc;
+        }
+
+        .success-message {
+            background: #efe;
+            color: #3c3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #cfc;
+        }
+
+        @media (max-width: 768px) {
+            .search-inputs {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .result-item .result-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Semantic Search</h1>
+            <div class="nav-buttons">
+                <button onclick="navigateTo('upload.html')">📤 Upload Files</button>
+                <button onclick="navigateTo('chat.html')">💬 Chat Bot</button>
+            </div>
+        </div>
+
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <div class="search-section">
+            <h2>Search Knowledge Base</h2>
+            <div id="messageContainer"></div>
+            
+            <div class="search-inputs">
+                <input 
+                    type="text" 
+                    id="searchQuery" 
+                    placeholder="Enter your search query..." 
+                    onkeypress="handleEnter(event)"
+                >
+                <select id="topK">
+                    <option value="3">Top 3</option>
+                    <option value="5" selected>Top 5</option>
+                    <option value="10">Top 10</option>
+                    <option value="20">Top 20</option>
+                </select>
+                <button class="search-btn" onclick="performSearch()">Search</button>
+            </div>
+        </div>
+
+        <div class="results-section">
+            <h2>Search Results</h2>
+            <div id="resultsContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let isSearching = false;
+
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+
+        function handleEnter(event) {
+            if (event.key === 'Enter') {
+                performSearch();
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/embeddings/stats');
+                const data = await response.json();
+
+                if (data.success) {
+                    const stats = data.statistics;
+                    const statsHtml = `
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.total_documents}</div>
+                            <div class="stat-label">Documents</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.total_chunks}</div>
+                            <div class="stat-label">Text Chunks</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.total_embeddings}</div>
+                            <div class="stat-label">Embeddings</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.completed_documents}</div>
+                            <div class="stat-label">Processed</div>
+                        </div>
+                    `;
+                    document.getElementById('statsGrid').innerHTML = statsHtml;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function performSearch() {
+            const query = document.getElementById('searchQuery').value.trim();
+            const topK = document.getElementById('topK').value;
+
+            if (!query) {
+                showMessage('Please enter a search query', 'error');
+                return;
+            }
+
+            if (isSearching) return;
+
+            isSearching = true;
+            const resultsContainer = document.getElementById('resultsContainer');
+            resultsContainer.innerHTML = '<div class="loading"><div class="spinner"></div><p>Searching...</p></div>';
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        top_k: parseInt(topK),
+                        threshold: 0.3
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.results.length === 0) {
+                        resultsContainer.innerHTML = '<div class="no-results">No relevant results found. Try a different query or check if documents have been uploaded and processed.</div>';
+                    } else {
+                        let htmlContent = `<div class="success-message">Found ${data.results.length} relevant results</div>`;
+                        
+                        data.results.forEach((result, index) => {
+                            const similarity = (result.similarity_score * 100).toFixed(1);
+                            htmlContent += `
+                                <div class="result-item">
+                                    <div class="result-header">
+                                        <div>
+                                            <div class="result-page">Document: ${result.document_filename} • Page ${result.page_number}</div>
+                                            <div class="result-document">Chunk ${result.chunk_index}</div>
+                                        </div>
+                                        <div class="result-score">${similarity}% Match</div>
+                                    </div>
+                                    <div class="result-text">${escapeHtml(result.chunk_text)}</div>
+                                </div>
+                            `;
+                        });
+
+                        resultsContainer.innerHTML = htmlContent;
+                    }
+                } else {
+                    showMessage('Error: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                showMessage('Failed to search: ' + error.message, 'error');
+            } finally {
+                isSearching = false;
+            }
+        }
+
+        function showMessage(message, type) {
+            const container = document.getElementById('messageContainer');
+            const className = type === 'error' ? 'error-message' : 'success-message';
+            container.innerHTML = `<div class="${className}">${message}</div>`;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Load stats on page load
+        window.addEventListener('load', loadStats);
+
+        // Refresh stats every 10 seconds
+        setInterval(loadStats, 10000);
+    </script>
+</body>
+</html>

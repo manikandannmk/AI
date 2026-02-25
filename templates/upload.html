@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF File Upload - PDF Processor</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body>
+    <!-- Header Navigation Bar -->
+    <header class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <h1>📄 PDF Processor</h1>
+            </div>
+            <nav class="navbar-menu">
+                <ul>
+                    <li><a href="/chat" class="nav-link nav-link-chat">💬 Chat</a></li>
+                    <li><a href="/search" class="nav-link nav-link-chat">🔍 Search</a></li>
+                    <li><a href="/" class="nav-link nav-link-active">📤 Upload File</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="upload-wrapper">
+            <!-- Header -->
+            <div class="header">
+                <h1>📄 PDF Processor</h1>
+                <p class="subtitle">Upload and Process Your PDF Files</p>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <div class="upload-box" id="uploadBox">
+                    <div class="upload-icon">📤</div>
+                    <h2>Upload PDF Files</h2>
+                    <p class="upload-text">Drag and drop your PDF files here or click to select</p>
+                    
+                    <input 
+                        type="file" 
+                        id="fileInput" 
+                        multiple 
+                        accept=".pdf,application/pdf"
+                        hidden
+                    >
+                    
+                    <button class="upload-btn" id="uploadBtn">
+                        Choose Files
+                    </button>
+                </div>
+
+                <!-- File Info -->
+                <div class="file-info">
+                    <p class="info-text">📋 Supported: PDF files</p>
+                    <p class="info-text">📏 Max size: 100 MB per file</p>
+                    <p class="info-text">🔢 Multiple files: Supported</p>
+                </div>
+            </div>
+
+            <!-- Processing Options -->
+            <div class="options-section">
+                <h3>Processing Options</h3>
+                
+                <div class="option-group">
+                    <label>
+                        <input type="checkbox" id="extractText" checked>
+                        <span>Extract Text</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="extractMetadata" checked>
+                        <span>Extract Metadata</span>
+                    </label>
+                </div>
+
+                <div class="option-group">
+                    <label>
+                        <input type="checkbox" id="extractTables">
+                        <span>Extract Tables</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="extractImages">
+                        <span>Extract Images</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Files List -->
+            <div class="files-list-section" id="filesListSection" style="display: none;">
+                <h3>Selected Files</h3>
+                <div class="files-list" id="filesList"></div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="processBtn">
+                        ✓ Process Files
+                    </button>
+                    <button class="btn btn-secondary" id="clearBtn">
+                        ✕ Clear All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Section -->
+            <div class="progress-section" id="progressSection" style="display: none;">
+                <h3>Processing Progress</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p class="progress-text" id="progressText">0%</p>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <h3>Processing Results</h3>
+                <div class="results-list" id="resultsList"></div>
+                <button class="btn btn-secondary" id="newUploadBtn">
+                    ↻ Upload More Files
+                </button>
+            </div>
+
+            <!-- Error Messages -->
+            <div class="error-message" id="errorMessage" style="display: none;"></div>
+
+            <!-- Success Messages -->
+            <div class="success-message" id="successMessage" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script src="../static/js/upload.js"></script>
+</body>
+</html>
