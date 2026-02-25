@@ -169,6 +169,57 @@ def upload_files():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/upload-status', methods=['GET'])
+def upload_status():
+    """Get the status of uploaded and processing files"""
+    try:
+        # Get counts of documents in different states
+        pending_docs = PDFDocument.query.filter_by(processing_status='pending').count()
+        processing_docs = PDFDocument.query.filter_by(processing_status='processing').count()
+        completed_docs = PDFDocument.query.filter_by(processing_status='completed').count()
+        failed_docs = PDFDocument.query.filter_by(processing_status='failed').count()
+        
+        total_docs = pending_docs + processing_docs + completed_docs + failed_docs
+        
+        # Get processing files details
+        processing_files = PDFDocument.query.filter_by(processing_status='processing').all()
+        pending_files = PDFDocument.query.filter_by(processing_status='pending').all()
+        
+        processing_list = [
+            {
+                'name': doc.original_filename,
+                'status': doc.processing_status,
+                'uploaded_at': doc.uploaded_at.isoformat() if doc.uploaded_at else None
+            }
+            for doc in processing_files + pending_files
+        ]
+        
+        # Get failed files details
+        failed_files = PDFDocument.query.filter_by(processing_status='failed').all()
+        failed_list = [
+            {
+                'name': doc.original_filename,
+                'error': doc.error_message
+            }
+            for doc in failed_files
+        ]
+        
+        return jsonify({
+            'pending': pending_docs,
+            'processing': processing_docs,
+            'completed': completed_docs,
+            'failed': failed_docs,
+            'total': total_docs,
+            'processing_files': processing_list,
+            'failed_files': failed_list,
+            'still_processing': processing_docs + pending_docs > 0
+        })
+    
+    except Exception as e:
+        logger.error(f'Status check error: {str(e)}')
+        return jsonify({'error': str(e), 'still_processing': True}), 500
+
+
 @app.route('/api/process', methods=['POST'])
 @validate_response('process')
 def process_files():

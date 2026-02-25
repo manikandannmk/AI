@@ -24,6 +24,16 @@ class FileUploadHandler {
         this.progressSection = document.getElementById('progressSection');
         this.progressFill = document.getElementById('progressFill');
         this.progressText = document.getElementById('progressText');
+        
+        // Loader elements
+        this.loaderSection = document.getElementById('loaderSection');
+        this.loaderTitle = document.getElementById('loaderTitle');
+        this.loaderStatus = document.getElementById('loaderStatus');
+        this.processingStats = document.getElementById('processingStats');
+        this.processingCount = document.getElementById('processingCount');
+        this.completedCount = document.getElementById('completedCount');
+        this.elapsedTime = document.getElementById('elapsedTime');
+        
         this.resultsSection = document.getElementById('resultsSection');
         this.resultsList = document.getElementById('resultsList');
         
@@ -175,64 +185,154 @@ class FileUploadHandler {
         this.filesListSection.style.display = 'none';
         this.hideMessages();
 
-        // Process files
-        let completedFiles = 0;
-        const results = [];
-
-        for (const file of this.files) {
-            try {
-                const result = await this.processFile(file, options);
-                results.push(result);
-            } catch (error) {
-                results.push({
-                    name: file.name,
-                    error: error.message,
-                    type: 'error'
-                });
-            }
-
-            // Update progress
-            completedFiles++;
-            const progress = Math.round((completedFiles / this.files.length) * 100);
-            this.updateProgress(progress);
+        // Create FormData with all files
+        try {
+            const result = await this.uploadFilesToServer(this.files, options);
+            this.showResults([result]);
+        } catch (error) {
+            this.showResults([{
+                name: 'Upload',
+                type: 'error',
+                error: error.message
+            }]);
         }
-
-        // Show results
-        this.showResults(results);
     }
 
-    async processFile(file, options) {
-        // Simulate API call to process PDF
-        return new Promise((resolve) => {
-            const reader = new FileReader();
+    async uploadFilesToServer(files, options) {
+        const formData = new FormData();
+        
+        // Add all files to FormData
+        for (const file of files) {
+            formData.append('files', file);
+        }
+        
+        // Add processing options
+        formData.append('extractText', options.extractText);
+        formData.append('extractMetadata', options.extractMetadata);
+        formData.append('extractTables', options.extractTables);
+        formData.append('extractImages', options.extractImages);
+
+        try {
+            this.updateProgress(50);
             
-            reader.onload = (e) => {
-                // Simulate processing delay
-                setTimeout(() => {
-                    const result = {
-                        name: file.name,
-                        type: 'success',
-                        size: this.formatFileSize(file.size),
-                    };
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
 
-                    // Mock results based on selected options
-                    if (options.extractText) {
-                        result.text = `Text extraction from ${file.name} would appear here...`;
-                    }
-                    if (options.extractMetadata) {
-                        result.metadata = {
-                            'File Size': this.formatFileSize(file.size),
-                            'File Type': 'PDF',
-                            'Upload Time': new Date().toLocaleString(),
-                        };
-                    }
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Upload failed');
+            }
 
-                    resolve(result);
-                }, Math.random() * 2000);
+            const data = await response.json();
+            this.updateProgress(100);
+            
+            // Hide progress and files list, show loader
+            this.progressSection.style.display = 'none';
+            this.filesListSection.style.display = 'none';
+            this.resultsSection.style.display = 'none';
+            this.loaderSection.style.display = 'block';
+            this.processingStats.style.display = 'block';
+            
+            // Start polling for status
+            const startTime = Date.now();
+            this.pollUploadStatus(startTime);
+            
+            return {
+                name: `${files.length} file(s) uploaded`,
+                type: data.success ? 'success' : 'warning',
+                message: data.message,
+                uploaded: data.uploaded,
+                errors: data.errors
             };
+        } catch (error) {
+            this.updateProgress(0);
+            throw error;
+        }
+    }
 
-            reader.readAsArrayBuffer(file);
-        });
+    async pollUploadStatus(startTime) {
+        const pollInterval = setInterval(async () => {
+            try {
+                const response = await fetch('/api/upload-status');
+                const status = await response.json();
+                
+                // Update elapsed time
+                const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+                this.elapsedTime.textContent = this.formatTime(elapsedSeconds);
+                
+                // Update processing counts
+                this.processingCount.textContent = status.processing + status.pending;
+                this.completedCount.textContent = status.completed;
+                
+                // Update status message
+                if (status.still_processing) {
+                    this.loaderStatus.textContent = 
+                        `Processing ${status.processing + status.pending} file(s)... ` +
+                        `${status.completed} completed, ${status.failed} failed`;
+                } else {
+                    // Processing complete
+                    clearInterval(pollInterval);
+                    
+                    // Hide loader and show results
+                    this.loaderSection.style.display = 'none';
+                    this.showProcessingResults(status);
+                }
+            } catch (error) {
+                console.error('Status check error:', error);
+            }
+        }, 1000); // Poll every second
+    }
+
+    showProcessingResults(status) {
+        this.resultsSection.style.display = 'block';
+        this.resultsList.innerHTML = '';
+
+        const resultItem = document.createElement('div');
+        resultItem.className = `result-item success`;
+
+        let content = `<div class="result-file-name">📊 Processing Summary</div>`;
+        content += `<div class="result-content">`;
+        content += `<strong>✓ Completed:</strong> ${status.completed} file(s)<br>`;
+        
+        if (status.failed > 0) {
+            content += `<strong style="color: #c0392b;">✗ Failed:</strong> ${status.failed} file(s)<br>`;
+        }
+        
+        if (status.failed_files && status.failed_files.length > 0) {
+            content += `<br><strong>Failed Files:</strong><ul>`;
+            status.failed_files.forEach(file => {
+                content += `<li>❌ ${file.name} - ${file.error}</li>`;
+            });
+            content += `</ul>`;
+        }
+        
+        content += `<br><strong>Total Processing Time:</strong> ${this.elapsedTime.textContent}`;
+        content += `</div>`;
+
+        resultItem.innerHTML = content;
+        this.resultsList.appendChild(resultItem);
+
+        if (status.failed === 0) {
+            this.showSuccess('All files processed successfully!');
+        } else {
+            this.showError(`Processing completed with ${status.failed} error(s)`);
+        }
+    }
+
+    formatTime(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+
+        if (hours > 0) {
+            return `${hours}h ${minutes}m ${secs}s`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${secs}s`;
+        } else {
+            return `${secs}s`;
+        }
     }
 
     updateProgress(progress) {
@@ -252,33 +352,38 @@ class FileUploadHandler {
             let content = `<div class="result-file-name">📄 ${result.name}</div>`;
 
             if (result.error) {
-                content += `<div class="result-content" style="color: #c0392b;">Error: ${result.error}</div>`;
+                content += `<div class="result-content" style="color: #c0392b;">❌ Error: ${result.error}</div>`;
             } else {
-                if (result.size) {
-                    content += `<div class="result-content"><strong>Size:</strong> ${result.size}</div>`;
+                // Display upload message
+                if (result.message) {
+                    content += `<div class="result-content"><strong>Status:</strong> ${result.message}</div>`;
                 }
 
-                if (result.text) {
-                    content += `<div class="result-content"><strong>Extracted Text:</strong>\n${result.text}</div>`;
+                // Display uploaded files list
+                if (result.uploaded && result.uploaded.length > 0) {
+                    content += `<div class="result-content"><strong>Uploaded Files (${result.uploaded.length}):</strong><ul>`;
+                    result.uploaded.forEach(file => {
+                        content += `<li>✓ ${file.name} - Size: ${file.size} bytes - Status: ${file.status}</li>`;
+                    });
+                    content += `</ul></div>`;
                 }
 
-                if (result.metadata) {
-                    content += `<div class="result-content"><strong>Metadata:</strong>\n`;
-                    for (const [key, value] of Object.entries(result.metadata)) {
-                        content += `${key}: ${JSON.stringify(value)}\n`;
-                    }
-                    content += `</div>`;
+                // Display errors if any
+                if (result.errors && result.errors.length > 0) {
+                    content += `<div class="result-content" style="color: #c0392b;"><strong>Errors (${result.errors.length}):</strong><ul>`;
+                    result.errors.forEach(error => {
+                        content += `<li>❌ ${error}</li>`;
+                    });
+                    content += `</ul></div>`;
                 }
-
-                // Add download link
-                content += `<a href="#" class="result-link">⬇️ Download Result</a>`;
             }
 
             resultItem.innerHTML = content;
             this.resultsList.appendChild(resultItem);
         });
 
-        this.showSuccess('Files processed successfully!');
+        const message = results.some(r => r.error) ? 'Upload completed with errors' : 'Files uploaded successfully!';
+        this.showSuccess(message);
     }
 
     resetForm() {
@@ -287,6 +392,7 @@ class FileUploadHandler {
         this.filesListSection.style.display = 'none';
         this.progressSection.style.display = 'none';
         this.resultsSection.style.display = 'none';
+        this.loaderSection.style.display = 'none';
         this.progressFill.style.width = '0%';
         this.progressText.textContent = '0%';
         this.hideMessages();
