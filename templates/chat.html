@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - PDF Processor</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body>
+    <!-- Header Navigation Bar -->
+    <header class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <h1>📄 PDF Processor</h1>
+            </div>
+            <nav class="navbar-menu">
+                <ul>
+                    <li><a href="/chat" class="nav-link nav-link-active">💬 Chat</a></li>
+                    <li><a href="/search" class="nav-link nav-link-chat">🔍 Search</a></li>
+                    <li><a href="/" class="nav-link nav-link-chat">📤 Upload File</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container chat-container">
+        <div class="chat-wrapper">
+            <!-- Chat Header -->
+            <div class="chat-header">
+                <div class="chat-header-content">
+                    <h2>🤖 PDF Assistant</h2>
+                    <p class="chat-status">Online</p>
+                </div>
+                <button class="chat-minimize" id="minimizeChat">−</button>
+            </div>
+
+            <!-- Chat Messages Area -->
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot-message">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <p>Hello! 👋 I'm your PDF Assistant. I can help you with:</p>
+                        <ul class="chat-suggestions">
+                            <li>📄 Extract text from PDFs</li>
+                            <li>🔗 Merge multiple PDF files</li>
+                            <li>✂️ Split PDF documents</li>
+                            <li>📋 Extract metadata & information</li>
+                            <li>🖼️ Extract images from PDFs</li>
+                            <li>🔄 Rotate PDF pages</li>
+                        </ul>
+                        <p>How can I assist you today?</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions" id="quickActions">
+                <button class="quick-action-btn" onclick="sendMessage('How do I upload a PDF?')">
+                    📤 Upload Guide
+                </button>
+                <button class="quick-action-btn" onclick="sendMessage('What can you do?')">
+                    ❓ Features
+                </button>
+                <button class="quick-action-btn" onclick="sendMessage('How do I merge PDFs?')">
+                    🔗 Merge PDFs
+                </button>
+                <button class="quick-action-btn" onclick="sendMessage('How do I extract text?')">
+                    📖 Extract Text
+                </button>
+            </div>
+
+            <!-- Chat Input Area -->
+            <div class="chat-input-area">
+                <form class="chat-form" id="chatForm" onsubmit="handleSendMessage(event)">
+                    <input 
+                        type="text" 
+                        class="chat-input" 
+                        id="chatInput" 
+                        placeholder="Type your question here..."
+                        autocomplete="off"
+                    >
+                    <button type="submit" class="chat-send-btn" title="Send message">
+                        ➤
+                    </button>
+                </form>
+                <p class="chat-hint">Press Enter or click send button</p>
+            </div>
+
+            <!-- Typing Indicator -->
+            <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/js/chat.js"></script>
+</body>
+</html>
