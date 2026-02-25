@@ -42,7 +42,8 @@ class PDFEmbeddingProcessor:
         except Exception as e:
             raise Exception(f"Error reading PDF: {str(e)}")
 
-    def chunk_text(self, text: str, chunk_size: int = 500, overlap: int = 100) -> List[str]:
+    def chunk_text(self, text: str, chunk_size: int = 500, overlap: int = 100,
+                   mode: str = 'char', sentences_per_chunk: int = 3) -> List[str]:
         """
         Split text into overlapping chunks
         
@@ -59,17 +60,45 @@ class PDFEmbeddingProcessor:
 
         # Clean text
         text = self._clean_text(text)
-        
         chunks = []
-        start = 0
 
+        if mode == 'sentence':
+            # Split into sentences and group them
+            # Simple sentence splitter based on punctuation
+            sentences = re.split(r'(?<=[\.!?])\s+', text)
+
+            current = []
+            for s in sentences:
+                s = s.strip()
+                if not s:
+                    continue
+
+                current.append(s)
+
+                # If we've reached desired number of sentences or length limit, flush
+                if len(current) >= sentences_per_chunk or sum(len(x) for x in current) >= chunk_size:
+                    chunk = ' '.join(current).strip()
+                    if chunk:
+                        chunks.append(chunk)
+                    current = []
+
+            # Flush remaining
+            if current:
+                chunk = ' '.join(current).strip()
+                if chunk:
+                    chunks.append(chunk)
+
+            return chunks
+
+        # Default character-based chunking (existing behavior)
+        start = 0
         while start < len(text):
             end = min(start + chunk_size, len(text))
             chunk = text[start:end].strip()
-            
+
             if chunk:  # Only add non-empty chunks
                 chunks.append(chunk)
-            
+
             start = end - overlap if end - overlap > start else end
 
         return chunks

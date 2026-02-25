@@ -60,34 +60,35 @@ def process_pdf_embeddings(file_path: str, original_filename: str):
         file_path: Path to uploaded PDF file
         original_filename: Original filename
     """
-    try:
-        logger.info(f'Starting PDF processing for {original_filename}')
-        
-        # Initialize embedding processor
-        processor = PDFEmbeddingProcessor(model_name="all-MiniLM-L6-v2")
-        
-        # Process PDF: read, chunk, embed, and store
-        doc, total_embeddings = processor.process_pdf(
-            file_path,
-            original_filename,
-            chunk_size=500,
-            overlap=100
-        )
-        
-        logger.info(f'Completed PDF processing: {original_filename} - {total_embeddings} embeddings created')
-        
-    except Exception as e:
-        logger.error(f'Error processing PDF {original_filename}: {str(e)}')
-        # Update document status to failed
+    # Create application context for database access in background thread
+    with app.app_context():
         try:
-            with app.app_context():
+            logger.info(f'Starting PDF processing for {original_filename}')
+            
+            # Initialize embedding processor
+            processor = PDFEmbeddingProcessor(model_name="all-MiniLM-L6-v2")
+            
+            # Process PDF: read, chunk, embed, and store
+            doc, total_embeddings = processor.process_pdf(
+                file_path,
+                original_filename,
+                chunk_size=500,
+                overlap=100
+            )
+            
+            logger.info(f'Completed PDF processing: {original_filename} - {total_embeddings} embeddings created')
+            
+        except Exception as e:
+            logger.error(f'Error processing PDF {original_filename}: {str(e)}')
+            # Update document status to failed
+            try:
                 doc = PDFDocument.query.filter_by(original_filename=original_filename).first()
                 if doc:
                     doc.processing_status = 'failed'
                     doc.error_message = str(e)
                     db.session.commit()
-        except:
-            pass
+            except:
+                pass
 
 
 @app.route('/')
@@ -467,6 +468,62 @@ def search_embeddings():
 
     except Exception as e:
         logger.error(f'Search error: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/qa', methods=['POST'])
+@validate_all_responses
+def qa():
+    """QA (RAG) endpoint: retrieve top-K chunks and synthesize a short answer"""
+    try:
+        data = request.json or {}
+        query = data.get('query')
+        document_id = data.get('document_id')
+        top_k = int(data.get('top_k', 5))
+        threshold = float(data.get('threshold', 0.1))
+
+        if not query:
+            return jsonify({'error': 'Query text required'}), 400
+
+        processor = PDFEmbeddingProcessor(model_name="all-MiniLM-L6-v2")
+
+        # Retrieve similar chunks
+        results = processor.search_similar_chunks(
+            query=query,
+            document_id=document_id,
+            top_k=top_k,
+            threshold=threshold
+        )
+
+        # Build a simple combined context and a lightweight synthesized answer
+        combined_context = "\n\n".join([r.get('chunk_text', '') for r in results])
+
+        # Very small heuristic-based synthesis: pick sentences that match query keywords
+        import re
+        sentences = re.split(r'(?<=[.!?])\s+', combined_context)
+        keywords = [w.lower() for w in re.findall(r'\w+', query) if len(w) > 3]
+        relevant = []
+        for s in sentences:
+            s_low = s.lower()
+            if any(k in s_low for k in keywords):
+                relevant.append(s)
+
+        if relevant:
+            answer = " ".join(relevant)[:2000]
+        else:
+            answer = combined_context[:2000] if combined_context else "No context found to answer the question."
+
+        sources = [{'chunk_id': r.get('chunk_id'), 'similarity_score': r.get('similarity_score')} for r in results]
+
+        return jsonify({
+            'success': True,
+            'query': query,
+            'answer': answer,
+            'sources': sources
+        })
+
+    except Exception as e:
+        logger.error(f'QA error: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 
