@@ -13,12 +13,16 @@ PDF Processor is a full-featured application that allows you to:
 
 ## ✨ Features
 
-### Web Interface
+### Web Interface ⭐ Enhanced
 - 🎨 Modern, responsive UI with drag-and-drop support
-- 📤 Multiple file uploads with real-time validation
+- 📤 **Functional file uploads** with batch processing
 - ⚙️ Configurable processing options
-- 📊 Real-time progress tracking
-- 📥 Download processed results
+- 📊 Real-time progress bar during upload
+- ⏳ **Animated loader spinner** during background processing
+- 📈 **Live processing statistics** (files processing, completed, elapsed time)
+- 📋 **Real-time status polling** - monitors embedding generation
+- 🎯 **Auto-completion detection** - automatically shows results when done
+- 🔗 Clickable result links and file management
 - 🔒 File size validation and security
 
 ### PDF Processing
@@ -30,6 +34,8 @@ PDF Processor is a full-featured application that allows you to:
 - ✂️ Split PDFs by page
 - 🔄 Rotate PDF pages
 - ✍️ Create new PDFs with formatted content
+- 🧠 **AI-powered embeddings** - Generate semantic embeddings for search
+- 💾 **Database storage** - Store documents and embeddings for fast retrieval
 
 ### Python Library
 - Easy-to-use API
@@ -37,6 +43,7 @@ PDF Processor is a full-featured application that allows you to:
 - Full test coverage
 - Type hints and docstrings
 - Example scripts included
+- Background processing support
 
 ## 📁 Project Structure
 

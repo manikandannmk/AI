@@ -25,7 +25,7 @@ class PDFDocument(db.Model):
     processing_status = db.Column(db.String(50), default='pending')  # pending, processing, completed, failed
     processing_date = db.Column(db.DateTime)
     error_message = db.Column(db.Text)
-    metadata = db.Column(db.JSON)  # Store additional metadata
+    doc_metadata = db.Column(db.JSON)  # Store additional metadata
 
     # Relationship
     chunks = db.relationship('TextChunk', backref='document', cascade='all, delete-orphan')

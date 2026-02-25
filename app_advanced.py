@@ -15,6 +15,7 @@ from pdf_processor import PDFReader, PDFWriter
 from pdf_processor.utils import merge_pdfs, split_pdf, rotate_pdf, get_pdf_info
 from pdf_processor.database import db, PDFDocument, TextChunk, Embedding, SearchQuery, init_db
 from pdf_processor.embeddings import PDFEmbeddingProcessor
+from pdf_processor.response_validator import validate_all_responses, validate_response
 import numpy as np
 
 # Configuration
@@ -59,34 +60,35 @@ def process_pdf_embeddings(file_path: str, original_filename: str):
         file_path: Path to uploaded PDF file
         original_filename: Original filename
     """
-    try:
-        logger.info(f'Starting PDF processing for {original_filename}')
-        
-        # Initialize embedding processor
-        processor = PDFEmbeddingProcessor(model_name="all-MiniLM-L6-v2")
-        
-        # Process PDF: read, chunk, embed, and store
-        doc, total_embeddings = processor.process_pdf(
-            file_path,
-            original_filename,
-            chunk_size=500,
-            overlap=100
-        )
-        
-        logger.info(f'Completed PDF processing: {original_filename} - {total_embeddings} embeddings created')
-        
-    except Exception as e:
-        logger.error(f'Error processing PDF {original_filename}: {str(e)}')
-        # Update document status to failed
+    # Create application context for database access in background thread
+    with app.app_context():
         try:
-            with app.app_context():
+            logger.info(f'Starting PDF processing for {original_filename}')
+            
+            # Initialize embedding processor
+            processor = PDFEmbeddingProcessor(model_name="all-MiniLM-L6-v2")
+            
+            # Process PDF: read, chunk, embed, and store
+            doc, total_embeddings = processor.process_pdf(
+                file_path,
+                original_filename,
+                chunk_size=500,
+                overlap=100
+            )
+            
+            logger.info(f'Completed PDF processing: {original_filename} - {total_embeddings} embeddings created')
+            
+        except Exception as e:
+            logger.error(f'Error processing PDF {original_filename}: {str(e)}')
+            # Update document status to failed
+            try:
                 doc = PDFDocument.query.filter_by(original_filename=original_filename).first()
                 if doc:
                     doc.processing_status = 'failed'
                     doc.error_message = str(e)
                     db.session.commit()
-        except:
-            pass
+            except:
+                pass
 
 
 @app.route('/')
@@ -111,6 +113,7 @@ def search():
 
 
 @app.route('/api/upload', methods=['POST'])
+@validate_response('upload')
 def upload_files():
     """Handle file uploads and start embedding processing"""
     try:
@@ -166,7 +169,59 @@ def upload_files():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/upload-status', methods=['GET'])
+def upload_status():
+    """Get the status of uploaded and processing files"""
+    try:
+        # Get counts of documents in different states
+        pending_docs = PDFDocument.query.filter_by(processing_status='pending').count()
+        processing_docs = PDFDocument.query.filter_by(processing_status='processing').count()
+        completed_docs = PDFDocument.query.filter_by(processing_status='completed').count()
+        failed_docs = PDFDocument.query.filter_by(processing_status='failed').count()
+        
+        total_docs = pending_docs + processing_docs + completed_docs + failed_docs
+        
+        # Get processing files details
+        processing_files = PDFDocument.query.filter_by(processing_status='processing').all()
+        pending_files = PDFDocument.query.filter_by(processing_status='pending').all()
+        
+        processing_list = [
+            {
+                'name': doc.original_filename,
+                'status': doc.processing_status,
+                'uploaded_at': doc.uploaded_at.isoformat() if doc.uploaded_at else None
+            }
+            for doc in processing_files + pending_files
+        ]
+        
+        # Get failed files details
+        failed_files = PDFDocument.query.filter_by(processing_status='failed').all()
+        failed_list = [
+            {
+                'name': doc.original_filename,
+                'error': doc.error_message
+            }
+            for doc in failed_files
+        ]
+        
+        return jsonify({
+            'pending': pending_docs,
+            'processing': processing_docs,
+            'completed': completed_docs,
+            'failed': failed_docs,
+            'total': total_docs,
+            'processing_files': processing_list,
+            'failed_files': failed_list,
+            'still_processing': processing_docs + pending_docs > 0
+        })
+    
+    except Exception as e:
+        logger.error(f'Status check error: {str(e)}')
+        return jsonify({'error': str(e), 'still_processing': True}), 500
+
+
 @app.route('/api/process', methods=['POST'])
+@validate_response('process')
 def process_files():
     """Process uploaded PDF files"""
     try:
@@ -242,6 +297,7 @@ def process_files():
 
 
 @app.route('/api/merge', methods=['POST'])
+@validate_response('merge')
 def merge():
     """Merge multiple PDFs"""
     try:
@@ -273,6 +329,7 @@ def merge():
 
 
 @app.route('/api/split', methods=['POST'])
+@validate_response('split')
 def split():
     """Split a PDF"""
     try:
@@ -301,6 +358,7 @@ def split():
 
 
 @app.route('/api/rotate', methods=['POST'])
+@validate_response('rotate')
 def rotate():
     """Rotate PDF pages"""
     try:
@@ -332,6 +390,7 @@ def rotate():
 
 
 @app.route('/api/info', methods=['POST'])
+@validate_response('info')
 def info():
     """Get PDF information"""
     try:
@@ -372,12 +431,14 @@ def download(filepath):
 
 
 @app.route('/api/health', methods=['GET'])
+@validate_response('health')
 def health():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
 
 @app.route('/api/documents', methods=['GET'])
+@validate_response('documents')
 def get_documents():
     """Get all uploaded documents with their embedding status"""
     try:
@@ -393,6 +454,7 @@ def get_documents():
 
 
 @app.route('/api/documents/<int:doc_id>', methods=['GET'])
+@validate_response('document')
 def get_document(doc_id):
     """Get specific document details"""
     try:
@@ -411,6 +473,7 @@ def get_document(doc_id):
 
 
 @app.route('/api/search', methods=['POST'])
+@validate_response('search')
 def search_embeddings():
     """Search for similar chunks using semantic similarity"""
     try:
@@ -459,7 +522,64 @@ def search_embeddings():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/qa', methods=['POST'])
+@validate_all_responses
+def qa():
+    """QA (RAG) endpoint: retrieve top-K chunks and synthesize a short answer"""
+    try:
+        data = request.json or {}
+        query = data.get('query')
+        document_id = data.get('document_id')
+        top_k = int(data.get('top_k', 5))
+        threshold = float(data.get('threshold', 0.1))
+
+        if not query:
+            return jsonify({'error': 'Query text required'}), 400
+
+        processor = PDFEmbeddingProcessor(model_name="all-MiniLM-L6-v2")
+
+        # Retrieve similar chunks
+        results = processor.search_similar_chunks(
+            query=query,
+            document_id=document_id,
+            top_k=top_k,
+            threshold=threshold
+        )
+
+        # Build a simple combined context and a lightweight synthesized answer
+        combined_context = "\n\n".join([r.get('chunk_text', '') for r in results])
+
+        # Very small heuristic-based synthesis: pick sentences that match query keywords
+        import re
+        sentences = re.split(r'(?<=[.!?])\s+', combined_context)
+        keywords = [w.lower() for w in re.findall(r'\w+', query) if len(w) > 3]
+        relevant = []
+        for s in sentences:
+            s_low = s.lower()
+            if any(k in s_low for k in keywords):
+                relevant.append(s)
+
+        if relevant:
+            answer = " ".join(relevant)[:2000]
+        else:
+            answer = combined_context[:2000] if combined_context else "No context found to answer the question."
+
+        sources = [{'chunk_id': r.get('chunk_id'), 'similarity_score': r.get('similarity_score')} for r in results]
+
+        return jsonify({
+            'success': True,
+            'query': query,
+            'answer': answer,
+            'sources': sources
+        })
+
+    except Exception as e:
+        logger.error(f'QA error: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/chunks/<int:doc_id>', methods=['GET'])
+@validate_response('chunks')
 def get_chunks(doc_id):
     """Get all chunks for a document"""
     try:
@@ -490,6 +610,7 @@ def get_chunks(doc_id):
 
 
 @app.route('/api/embeddings/stats', methods=['GET'])
+@validate_response('stats')
 def get_embedding_stats():
     """Get embedding statistics"""
     try:
@@ -521,6 +642,7 @@ def get_embedding_stats():
 
 
 @app.route('/api/chunk/<int:chunk_id>', methods=['GET'])
+@validate_response('chunk')
 def get_chunk(chunk_id):
     """Get specific chunk details with embeddings"""
     try:

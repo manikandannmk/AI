@@ -46,12 +46,31 @@ class ChatBot {
         // Show typing indicator
         this.showTypingIndicator();
 
-        // Simulate bot response delay
-        setTimeout(() => {
+        // Call server QA endpoint for answers (fallback to local KB)
+        fetch('/api/qa', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: message })
+        })
+        .then(res => res.json())
+        .then(data => {
             this.hideTypingIndicator();
-            const response = this.getBotResponse(message);
-            this.addMessage(response, 'bot');
-        }, 800 + Math.random() * 1200);
+            if (data && data.success && data.answer) {
+                this.addMessage(data.answer, 'bot');
+            } else if (data && data.error) {
+                // fallback to canned response if server returned an error
+                const fallback = this.getBotResponse(message);
+                this.addMessage(data.error || fallback, 'bot');
+            } else {
+                const fallback = this.getBotResponse(message);
+                this.addMessage(fallback, 'bot');
+            }
+        })
+        .catch(err => {
+            this.hideTypingIndicator();
+            const fallback = this.getBotResponse(message);
+            this.addMessage('Sorry, I could not reach the server. ' + fallback, 'bot');
+        });
     }
 
     addMessage(text, sender) {

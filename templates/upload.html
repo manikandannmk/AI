@@ -102,11 +102,25 @@
 
             <!-- Progress Section -->
             <div class="progress-section" id="progressSection" style="display: none;">
-                <h3>Processing Progress</h3>
+                <h3>Uploading Files...</h3>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
                 <p class="progress-text" id="progressText">0%</p>
+            </div>
+
+            <!-- Loader Section -->
+            <div class="loader-section" id="loaderSection" style="display: none;">
+                <div class="spinner-container">
+                    <div class="spinner"></div>
+                    <h3 id="loaderTitle">Processing Files</h3>
+                    <p id="loaderStatus">Generating embeddings and indexing documents...</p>
+                    <div class="processing-stats" id="processingStats" style="display: none;">
+                        <p><strong>Files Processing:</strong> <span id="processingCount">0</span></p>
+                        <p><strong>Files Completed:</strong> <span id="completedCount">0</span></p>
+                        <p><strong>Elapsed Time:</strong> <span id="elapsedTime">0s</span></p>
+                    </div>
+                </div>
             </div>
 
             <!-- Results Section -->
